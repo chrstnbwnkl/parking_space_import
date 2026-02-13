@@ -1,0 +1,50 @@
+name: Build and Test
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tools/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/**'
+      - 'third_party/**'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tools/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/valhalla/valhalla-dev:master
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y git pkgconf cmake build-essential libprotozero-dev zlib1g-dev libsqlite3-mod-spatialite libspatialite-dev libgdal-dev libgeos-dev curl libcurl4-openssl-dev libluajit-5.1-dev libzmq3-dev libprotobuf-dev libczmq-dev protobuf-compiler libgeotiff-dev libtiff-dev
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Build tests
+        run: cmake --build build --target tests -j$(nproc)
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Build Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: valhalla-parking-spaces:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
