@@ -118,7 +118,7 @@ TEST(StandAlone, parse_nodes_levels) {
   const std::string ascii_map = R"(
       A--------B
       | 4  1   |
-      |  3   2 |
+      |  3 5 2 |
       C--------D
     )";
   auto layout = gurka::detail::map_to_coordinates(ascii_map, 10, {7.5, 52.54});
@@ -141,8 +141,8 @@ TEST(StandAlone, parse_nodes_levels) {
 
   midgard::sequence<parking_spots::parking_space_node> seq(data_dir + "/parking_space.bin");
 
+  EXPECT_EQ(seq.size(), 5);
   {
-    EXPECT_EQ(seq.size(), 4);
     EXPECT_EQ((*seq.at(0)).osm_id, 12);
     EXPECT_NEAR((*seq.at(0)).lat, 52.54, 0.001);
     EXPECT_NEAR((*seq.at(0)).lon, 7.5001, 0.001);
