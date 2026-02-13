@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/valhalla/valhalla-dev:master
+      image: ghcr.io/valhalla/valhalla-dev:latest
     steps:
       - name: Install dependencies
         run: |
