@@ -39,6 +39,7 @@ endif()
 add_library(parking_spaces STATIC
     # sources here
     src/parking_spaces.cc
+    src/correlation.cc
 )
 
 target_include_directories(parking_spaces PUBLIC include ${libosmium_include_dirs})
