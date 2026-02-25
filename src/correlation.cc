@@ -288,14 +288,12 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
 
       auto edgeinfo = local_tile.edgeinfo(proj.directededge);
       // Store the information of the edge start <-> bss for pedestrian
-      auto start = parking_connection{bss.node,
-                                      bss_ll,
-                                      {local_tile.id().tileid(), local_level, proj.startnode},
-                                      edgeinfo,
-                                      // In order to simplify the problem, we ALWAYS consider that the
-                                      // outbound edge of start node is forward
-                                      true,
-                                      proj};
+      auto start =
+          parking_connection{bss.node, bss_ll,
+                             GraphId(local_tile.id().tileid(), local_level, proj.startnode), edgeinfo,
+                             // In order to simplify the problem, we ALWAYS consider that the
+                             // outbound edge of start node is forward
+                             true, proj};
 
       start.level = bss.level;
       start.level_precision = bss.level_precision;
