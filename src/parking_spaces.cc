@@ -81,7 +81,7 @@ public:
         return false;
       }
     } else {
-      ps_node.level = parking_spots::kInvalidLevel;
+      ps_node.level = parking_spaces::kInvalidLevel;
     }
 
     ps_node.node.set_latlng(node.location().lon(), node.location().lat());

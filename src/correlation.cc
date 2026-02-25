@@ -30,6 +30,11 @@ using namespace valhalla::mjolnir;
 
 namespace {
 
+constexpr std::array<uint16_t, 11> kAccessMasks = {kAutoAccess,  kPedestrianAccess, kBicycleAccess,
+                                                   kTruckAccess, kEmergencyAccess,  kTaxiAccess,
+                                                   kBusAccess,   kHOVAccess,        kWheelchairAccess,
+                                                   kMopedAccess, kMotorcycleAccess};
+
 /**
  * For levels we use 7-bit varint encoding, with arbitrary precision stored separately.
  *
@@ -289,17 +294,17 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
       auto edgeinfo = local_tile.edgeinfo(proj.directededge);
       // Store the information of the edge start <-> bss for pedestrian
       auto start =
-          parking_connection{bss.node, bss_ll,
+          parking_connection(bss.node, bss_ll,
                              GraphId(local_tile.id().tileid(), local_level, proj.startnode), edgeinfo,
                              // In order to simplify the problem, we ALWAYS consider that the
                              // outbound edge of start node is forward
-                             true, proj};
+                             true, proj);
 
       start.level = bss.level;
       start.level_precision = bss.level_precision;
       // Store the information of the edge end <-> bss for pedestrian
       auto end =
-          parking_connection{bss.node, bss_ll, proj.directededge->endnode(), edgeinfo, false, proj};
+          parking_connection(bss.node, bss_ll, proj.directededge->endnode(), edgeinfo, false, proj);
       end.level = bss.level;
       end.level_precision = bss.level_precision;
 
