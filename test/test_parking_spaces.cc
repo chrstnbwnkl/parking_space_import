@@ -22,6 +22,11 @@ using namespace valhalla::gurka;
 namespace {
 constexpr auto kMapEpsilon = 0.002;
 
+std::string point_ll_diff(midgard::PointLL& a, midgard::PointLL& b) {
+  return std::format("A lat({}),lon({}) vs. B lat({}),lon({}) | Distance(m): {}", a.lat(), a.lng(),
+                     b.lat(), b.lng(), a.Distance(b));
+}
+
 map buildtiles_parking(const nodelayout& layout,
                        const ways& ways,
                        const nodes& nodes,
@@ -157,16 +162,16 @@ TEST(StandAlone, parse_nodes_levels) {
   std::filesystem::create_directories(data_dir);
 
   const std::string ascii_map = R"(
-      A-------------------B
+      A-a-----------------B
       | 4                 |
-      |                   |
-      |              6  1 |
-      |        3      5 2 |
+      |                  1|
+      |                   |6
+      |        3    5   2 |
       C-------------------D
     )";
   auto layout = gurka::detail::map_to_coordinates(ascii_map, 10, {7.5, 52.54});
   gurka::ways ways = {
-      {"AB", {{"highway", "residential"}}},
+      {"AaB", {{"highway", "residential"}}},
       {"AC", {{"highway", "residential"}}},
       {"CD", {{"highway", "residential"}}},
       {"DB", {{"highway", "residential"}}},
@@ -241,7 +246,66 @@ TEST(StandAlone, parse_nodes_levels) {
     EXPECT_EQ(ni->edge_count(), 3);
 
     auto edge_id = node;
-    edge_id.set_id(ni->edge_index() + 2);
+    edge_id.set_id(ni->edge_index() + (ni->edge_count() - 1));
+    const auto* de = reader->directededge(edge_id);
+    EXPECT_EQ(de->forwardaccess(),
+              valhalla::baldr::kVehicularAccess | valhalla::baldr::kPedestrianAccess);
+
+    auto node4 = de->endnode();
+    auto ni4 = reader->nodeinfo(node4);
+
+    // check the new node
+    EXPECT_EQ(ni4->edge_count(), 2);
+    EXPECT_EQ(ni4->type(), baldr::NodeType::kParking);
+
+    midgard::DistanceApproximator<midgard::PointLL> da(layout.at("A"));
+
+    // check the outgoing edges
+    edge_id.set_id(ni4->edge_index());
+    auto _4out1 = reader->directededge(edge_id);
+    EXPECT_EQ(_4out1->use(), baldr::Use::kParkingAisle);
+    EXPECT_EQ(_4out1->classification(), baldr::RoadClass::kServiceOther);
+    EXPECT_EQ(_4out1->length(), 22); // in ASCII map units, this should be 3 * 10m grid size, but
+                                     // gurka does some weird projection to mercator and then back
+                                     // so this does not work; find a better way to test this
+
+    auto _4ei1 = reader->edgeinfo(edge_id);
+    auto _4out1_shape = _4ei1.shape();
+
+    EXPECT_EQ(_4out1_shape.size(), 3);
+    EXPECT_TRUE(_4out1_shape.at(0).ApproximatelyEqual(layout.at("A")))
+        << point_ll_diff(_4out1_shape.at(0), layout.at("A"));
+    EXPECT_TRUE(_4out1_shape.at(1).ApproximatelyEqual(layout.at("a")))
+        << point_ll_diff(_4out1_shape.at(1), layout.at("a"));
+    EXPECT_TRUE(_4out1_shape.at(2).ApproximatelyEqual(layout.at("4")))
+        << point_ll_diff(_4out1_shape.at(2), layout.at("4"));
+
+    EXPECT_EQ(_4ei1.levels().first.size(), 1);
+    EXPECT_EQ(_4ei1.levels().first.at(0).first, 566);
+    EXPECT_EQ(_4ei1.levels().first.at(0).second, 566);
+    EXPECT_EQ(_4ei1.levels().second, 0);
+
+    edge_id.set_id(ni4->edge_index() + 1);
+    auto _4out2 = reader->directededge(edge_id);
+    EXPECT_EQ(_4out2->use(), baldr::Use::kParkingAisle);
+    EXPECT_EQ(_4out2->classification(), baldr::RoadClass::kServiceOther);
+    auto _4ei2 = reader->edgeinfo(edge_id);
+    EXPECT_EQ(_4ei2.levels().first.size(), 1);
+    EXPECT_EQ(_4ei2.levels().first.at(0).first, 566);
+    EXPECT_EQ(_4ei2.levels().first.at(0).second, 566);
+    EXPECT_EQ(_4ei2.levels().second, 0);
+  }
+
+  // find node 3
+  {
+
+    auto reader = test::make_clean_graphreader(conf.get_child("mjolnir"));
+    const auto& node = gurka::findNode(*reader, layout, "C");
+    auto ni = reader->nodeinfo(node);
+    EXPECT_EQ(ni->edge_count(), 5); // C->D, C->A, plus the 3 edges to parking nodes 3,5 and 2
+
+    auto edge_id = node;
+    edge_id.set_id(ni->edge_index() + (ni->edge_count() - 1));
     const auto* de = reader->directededge(edge_id);
     EXPECT_EQ(de->forwardaccess(),
               valhalla::baldr::kVehicularAccess | valhalla::baldr::kPedestrianAccess);

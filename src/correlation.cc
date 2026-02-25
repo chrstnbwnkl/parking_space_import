@@ -125,7 +125,7 @@ struct parking_connection {
     is_forward_from_waynode = is_forward;
     speed = best.directededge->speed();
     surface = best.directededge->surface();
-    roadclass = best.directededge->classification();
+    // roadclass = best.directededge->classification();
     // forwardaccess = best.directededge->forwardaccess();
     // reverseaccess = best.directededge->reverseaccess();
   }
@@ -170,16 +170,35 @@ void compute_and_fill_shape(const BestProjection& best,
                             parking_connection& start,
                             parking_connection& end) {
   const auto& closest_point = std::get<0>(best.closest);
-  auto closest_index = std::get<2>(best.closest);
+  auto closest_segment = std::get<2>(best.closest);
 
-  std::copy(best.shape.begin(), best.shape.begin() + closest_index + 1,
+  // copy from the start of the shape to (but excluding) the end point of the segment
+  // containing the closest point
+  std::copy(best.shape.begin(), best.shape.begin() + closest_segment + 1,
             std::back_inserter(start.shape));
-  start.shape.push_back(closest_point);
-  start.shape.push_back(bss_ll);
+  // if the closest point lies directly on a shape point, skip to avoid
+  // duplication
+  if (*(best.shape.begin() + closest_segment) != closest_point) {
+    start.shape.push_back(closest_point);
+  }
 
-  end.shape.push_back(bss_ll);
-  end.shape.push_back(closest_point);
-  std::copy(best.shape.begin() + closest_index + 1, best.shape.end(), std::back_inserter(end.shape));
+  // if the parking space lies directly on the closest point,
+  // skip to avoid duplication
+  if (bss_ll != closest_point) {
+    start.shape.push_back(bss_ll);
+  }
+
+  // same goes for the other shape
+  if (bss_ll != closest_point) {
+    end.shape.push_back(bss_ll);
+  }
+
+  if (*(best.shape.begin() + closest_segment) != closest_point) {
+    end.shape.push_back(closest_point);
+  }
+
+  std::copy(best.shape.begin() + closest_segment + 1, best.shape.end(),
+            std::back_inserter(end.shape));
 }
 
 const static auto VALID_EDGE_USES = std::unordered_set<Use>{
@@ -371,7 +390,7 @@ void add_bss_nodes_and_edges(GraphTileBuilder& tilebuilder_local,
         auto level = encode_level(bss_to_waynode.level);
         bss_to_waynode.tagged_values.push_back(
             // tag
-            encode_tag(TaggedValue::kLevel) +
+            encode_tag(TaggedValue::kLevels) +
             // size of everything after the tag
             encode_level(static_cast<float>(prec.size() + level.size())) +
             // precision
