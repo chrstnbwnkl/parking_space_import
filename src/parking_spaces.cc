@@ -70,7 +70,7 @@ public:
     }
 
     // we've found one we care about
-    parking_spots::parking_space_node ps_node;
+    parking_spaces::parking_space_node ps_node;
     ps_node.node = valhalla::mjolnir::OSMNode{uint64_t(node.id())};
 
     if (!level_value.empty()) {
@@ -91,7 +91,7 @@ public:
   }
 
 protected:
-  sequence<parking_spots::parking_space_node> sequence_;
+  sequence<parking_spaces::parking_space_node> sequence_;
 };
 
 /**
@@ -113,7 +113,7 @@ void parse_osm(std::string_view osm_file, std::string_view tmp_dir, bool& found_
 }
 } // namespace
 
-namespace parking_spots {
+namespace parking_spaces {
 
 /**
  * Processing Pipeline:
@@ -138,4 +138,4 @@ void process_parking_spaces(const boost::property_tree::ptree& config, std::stri
 
   parking_spaces::correlate_parking_spaces(config, std::string(tmp_dir) + kTempSequencePath.data());
 }
-} // namespace parking_spots
+} // namespace parking_spaces

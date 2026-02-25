@@ -158,7 +158,7 @@ DirectedEdge make_directed_edge(const GraphId endnode,
   return directededge;
 }
 
-using bss_by_tile_t = std::unordered_map<GraphId, std::vector<parking_spots::parking_space_node>>;
+using bss_by_tile_t = std::unordered_map<GraphId, std::vector<parking_spaces::parking_space_node>>;
 
 void compute_and_fill_shape(const BestProjection& best,
                             const PointLL& bss_ll,
@@ -183,7 +183,7 @@ const static auto VALID_EDGE_USES = std::unordered_set<Use>{
 };
 
 std::pair<std::vector<parking_connection>, std::vector<size_t>>
-project(const GraphTile& local_tile, const std::vector<parking_spots::parking_space_node>& osm_bss) {
+project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_space_node>& osm_bss) {
   auto t1 = std::chrono::high_resolution_clock::now();
   auto scoped_finally = make_finally([&t1, size = osm_bss.size()]() {
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -638,7 +638,7 @@ void correlate_parking_spaces(const boost::property_tree::ptree& pt,
 
   LOG_INFO("Importing parking_spaces");
 
-  valhalla::midgard::sequence<parking_spots::parking_space_node> bss_nodes{parking_nodes_bin, false};
+  valhalla::midgard::sequence<parking_spaces::parking_space_node> bss_nodes{parking_nodes_bin, false};
 
   bss_by_tile_t bss_by_tile;
 

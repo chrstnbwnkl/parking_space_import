@@ -49,7 +49,7 @@ map buildtiles_parking(const nodelayout& layout,
 
   mjolnir::build_tile_set(result.config, {pbf_filename}, mjolnir::BuildStage::kInitialize,
                           mjolnir::BuildStage::kTransit);
-  parking_spots::process_parking_spaces(result.config, pbf_filename);
+  parking_spaces::process_parking_spaces(result.config, pbf_filename);
   mjolnir::build_tile_set(result.config, {pbf_filename}, mjolnir::BuildStage::kHierarchy,
                           mjolnir::BuildStage::kValidate);
 
@@ -78,11 +78,11 @@ TEST(StandAlone, parse_nodes_empty) {
   const auto pbf_file = PS_BUILD_DIR "/test/data/parse_nodes/map.pbf";
   gurka::detail::build_pbf(layout, ways, {}, {}, pbf_file);
 
-  parking_spots::process_parking_spaces(conf, pbf_file);
+  parking_spaces::process_parking_spaces(conf, pbf_file);
   EXPECT_EQ(midgard::sequence<
-                parking_spots::parking_space_node>(PS_BUILD_DIR
-                                                   "/test/data/parse_nodes/parking_space.bin",
-                                                   false)
+                parking_spaces::parking_space_node>(PS_BUILD_DIR
+                                                    "/test/data/parse_nodes/parking_space.bin",
+                                                    false)
                 .size(),
             0);
 }
@@ -115,37 +115,37 @@ TEST(StandAlone, parse_nodes_basic) {
   const auto pbf_file = data_dir + "/map.pbf";
   gurka::detail::build_pbf(layout, ways, nodes, {}, pbf_file);
 
-  parking_spots::process_parking_spaces(conf, pbf_file);
+  parking_spaces::process_parking_spaces(conf, pbf_file);
 
-  midgard::sequence<parking_spots::parking_space_node> seq(data_dir + "/parking_space.bin");
+  midgard::sequence<parking_spaces::parking_space_node> seq(data_dir + "/parking_space.bin");
 
   {
     EXPECT_EQ(seq.size(), 4);
     EXPECT_EQ((*seq.at(0)).node.osmid_, 12);
     EXPECT_NEAR((*seq.at(0)).node.latlng().lat(), 52.54, kMapEpsilon);
     EXPECT_NEAR((*seq.at(0)).node.latlng().lng(), 7.5001, kMapEpsilon);
-    EXPECT_EQ((*seq.at(0)).level, parking_spots::kInvalidLevel);
+    EXPECT_EQ((*seq.at(0)).level, parking_spaces::kInvalidLevel);
   }
 
   {
     EXPECT_EQ((*seq.at(1)).node.osmid_, 13);
     EXPECT_NEAR((*seq.at(1)).node.latlng().lat(), 52.54, kMapEpsilon);
     EXPECT_NEAR((*seq.at(1)).node.latlng().lng(), 7.5001, kMapEpsilon);
-    EXPECT_EQ((*seq.at(1)).level, parking_spots::kInvalidLevel);
+    EXPECT_EQ((*seq.at(1)).level, parking_spaces::kInvalidLevel);
   }
 
   {
     EXPECT_EQ((*seq.at(2)).node.osmid_, 14);
     EXPECT_NEAR((*seq.at(2)).node.latlng().lat(), 52.54, kMapEpsilon);
     EXPECT_NEAR((*seq.at(2)).node.latlng().lng(), 7.5001, kMapEpsilon);
-    EXPECT_EQ((*seq.at(2)).level, parking_spots::kInvalidLevel);
+    EXPECT_EQ((*seq.at(2)).level, parking_spaces::kInvalidLevel);
   }
 
   {
     EXPECT_EQ((*seq.at(3)).node.osmid_, 15);
     EXPECT_NEAR((*seq.at(3)).node.latlng().lat(), 52.54, kMapEpsilon);
     EXPECT_NEAR((*seq.at(3)).node.latlng().lng(), 7.5001, kMapEpsilon);
-    EXPECT_EQ((*seq.at(3)).level, parking_spots::kInvalidLevel);
+    EXPECT_EQ((*seq.at(3)).level, parking_spaces::kInvalidLevel);
   }
 }
 
@@ -185,7 +185,7 @@ TEST(StandAlone, parse_nodes_levels) {
   gurka::detail::build_pbf(layout, ways, nodes, {}, pbf_file);
   buildtiles_parking(layout, ways, nodes, {}, conf);
 
-  midgard::sequence<parking_spots::parking_space_node> seq(data_dir + "/parking_space.bin");
+  midgard::sequence<parking_spaces::parking_space_node> seq(data_dir + "/parking_space.bin");
 
   EXPECT_EQ(seq.size(), 6);
 

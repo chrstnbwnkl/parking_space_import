@@ -5,8 +5,8 @@
 
 #include <valhalla/mjolnir/osmnode.h>
 
-namespace parking_spots {
+namespace parking_spaces {
 constexpr float kInvalidLevel = std::numeric_limits<float>::max();
 
 void process_parking_spaces(const boost::property_tree::ptree&, std::string_view);
-} // namespace parking_spots
+} // namespace parking_spaces

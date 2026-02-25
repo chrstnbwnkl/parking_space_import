@@ -25,5 +25,5 @@ int main(int argc, char* argv[]) {
   if (!parse_common_args(program, options, result, &config, "mjolnir.logging", true))
     return EXIT_SUCCESS;
 
-  parking_spots::process_parking_spaces(config, result["input"].as<std::string>());
+  parking_spaces::process_parking_spaces(config, result["input"].as<std::string>());
 }
