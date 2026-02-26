@@ -19,7 +19,7 @@ on:
       - '.github/workflows/**'
 
 jobs:
-  build:
+  build_test:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/valhalla/valhalla-dev:latest

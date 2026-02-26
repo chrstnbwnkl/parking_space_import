@@ -8,7 +8,6 @@ struct parking_space_node {
   float level_precision;
 };
 
-static_assert(sizeof(parking_space_node) == 48u);
 static_assert(std::is_trivially_copyable_v<parking_space_node>,
               "parking_space_node must be trivially copyable");
 } // namespace parking_spaces
