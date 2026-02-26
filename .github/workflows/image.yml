@@ -102,4 +102,4 @@ jobs:
             ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }} \
             --amend ghcr.io/chrstnbwnkl/parking_space_import:${{  needs.extract_image_tag.outputs.tag  }}-amd64 \
             --amend ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }}-arm64 
-          docker manifest ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }}
+          docker manifest push ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }}
