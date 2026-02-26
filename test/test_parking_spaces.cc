@@ -154,7 +154,7 @@ TEST(StandAlone, parse_nodes_basic) {
   }
 }
 
-TEST(StandAlone, parse_nodes_levels) {
+TEST(StandAlone, parse_and_correlate_nodes_levels) {
 
   std::string data_dir = PS_BUILD_DIR "/test/data/parse_nodes_basic";
   auto conf = test::make_config(data_dir, {{"mjolnir.concurrency", "1"}});
@@ -162,19 +162,22 @@ TEST(StandAlone, parse_nodes_levels) {
   std::filesystem::create_directories(data_dir);
 
   const std::string ascii_map = R"(
-      A-a-----------------B
-      | 4                 |
-      |                  1|
-      |                   |6
-      |        3    5   2 |
-      C-------------------D
+      A-a-----------------B  G
+      | 4                 |  |
+      |                  1|  |
+      |                   |6 |
+      |        3    5   2 |  |
+      C-------------------D  H
+      E-------------------F
     )";
   auto layout = gurka::detail::map_to_coordinates(ascii_map, 10, {7.5, 52.54});
   gurka::ways ways = {
-      {"AaB", {{"highway", "residential"}}},
-      {"AC", {{"highway", "residential"}}},
-      {"CD", {{"highway", "residential"}}},
-      {"DB", {{"highway", "residential"}}},
+      {"AaB", {{"highway", "residential"}, {"level", "566"}}},
+      {"AC", {{"highway", "residential"}, {"level", "100"}}},
+      {"CD", {{"highway", "residential"}, {"level", "-12"}}},
+      {"DB", {{"highway", "residential"}, {"level", "1"}}},
+      {"EF", {{"highway", "residential"}, {"level", "0"}}},
+      {"GH", {{"highway", "residential"}, {"level", "75.35"}}},
   };
 
   gurka::nodes nodes{
@@ -242,11 +245,11 @@ TEST(StandAlone, parse_nodes_levels) {
   {
     auto reader = test::make_clean_graphreader(conf.get_child("mjolnir"));
     const auto& node = gurka::findNode(*reader, layout, "A");
-    auto ni = reader->nodeinfo(node);
-    EXPECT_EQ(ni->edge_count(), 3);
+    auto niA = reader->nodeinfo(node);
+    EXPECT_EQ(niA->edge_count(), 3);
 
     auto edge_id = node;
-    edge_id.set_id(ni->edge_index() + (ni->edge_count() - 1));
+    edge_id.set_id(niA->edge_index() + (niA->edge_count() - 1));
     const auto* de = reader->directededge(edge_id);
     EXPECT_EQ(de->forwardaccess(),
               valhalla::baldr::kVehicularAccess | valhalla::baldr::kPedestrianAccess);
@@ -302,7 +305,7 @@ TEST(StandAlone, parse_nodes_levels) {
     auto reader = test::make_clean_graphreader(conf.get_child("mjolnir"));
     const auto& node = gurka::findNode(*reader, layout, "C");
     auto ni = reader->nodeinfo(node);
-    EXPECT_EQ(ni->edge_count(), 5); // C->D, C->A, plus the 3 edges to parking nodes 3,5 and 2
+    EXPECT_EQ(ni->edge_count(), 3); // C->D, C->A, plus the 3 edges to parking nodes 3,5 and 2
 
     auto edge_id = node;
     edge_id.set_id(ni->edge_index() + (ni->edge_count() - 1));
@@ -310,4 +313,86 @@ TEST(StandAlone, parse_nodes_levels) {
     EXPECT_EQ(de->forwardaccess(),
               valhalla::baldr::kVehicularAccess | valhalla::baldr::kPedestrianAccess);
   }
+}
+
+TEST(StandAlone, pathfinding) {
+
+  std::string data_dir = PS_BUILD_DIR "/test/data/parse_nodes_routing";
+  auto conf = test::make_config(data_dir, {{"mjolnir.concurrency", "1"}});
+
+  std::filesystem::create_directories(data_dir);
+
+  const std::string ascii_map = R"(
+    x A----B-------------------C-------D y
+           |                   |
+           |                   |
+           |                   |z
+           |   1               | 
+           E-------------------F
+    )";
+  auto layout = gurka::detail::map_to_coordinates(ascii_map, 10, {7.5, 52.54});
+  gurka::ways ways = {
+      {"AB", {{"highway", "residential"}, {"level", "0"}}},
+      {"BC", {{"highway", "corridor"}, {"level", "1-3"}}},
+      {"CD", {{"highway", "corridor"}, {"indoor", "yes"}, {"level", "3"}}},
+      {"BE", {{"highway", "residential"}, {"level", "1"}}},
+      {"EF", {{"highway", "residential"}, {"level", "1"}}},
+      {"FC", {{"highway", "residential"}, {"level", "1"}}},
+  };
+
+  gurka::nodes nodes{
+      {"1", {{"amenity", "parking_space"}, {"level", "1"}, {"osm_id", "12"}}},
+  };
+
+  const auto pbf_file = data_dir + "/map.pbf";
+  gurka::detail::build_pbf(layout, ways, nodes, {}, pbf_file);
+  auto map = buildtiles_parking(layout, ways, nodes, {}, conf);
+  // route x -> z
+  {
+    auto result = gurka::do_action(valhalla::Options::route, map, {"x", "z"}, "auto_pedestrian",
+                                   {{"/locations/0/search_filter/level", "0"},
+                                    {"/locations/1/search_filter/level", "1"}});
+    gurka::assert::raw::
+        expect_maneuvers(result,
+                         {
+                             DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kStart,
+                             DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kRight,
+                             DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kLeft,
+                             DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kParkVehicle,
+                             DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kLeft,
+                             DirectionsLeg_Maneuver_Type::
+                                 DirectionsLeg_Maneuver_Type_kDestinationRight,
+                         });
+    auto& leg = result.directions().routes(0).legs(0);
+
+    // travel mode changes along the route
+    EXPECT_EQ(leg.maneuver(0).travel_mode(), TravelMode::kDrive);
+    EXPECT_EQ(leg.maneuver(leg.maneuver_size() - 1).travel_mode(), TravelMode::kPedestrian);
+    gurka::assert::raw::expect_path(result, {"AB", "BE", "EF", "EF", "FC"});
+  }
+
+  // route x -> y
+  // note: this should work as soon as https://github.com/valhalla/valhalla/pull/5903 is merged
+  // {
+  //   auto result = gurka::do_action(valhalla::Options::route, map, {"x", "y"}, "auto_pedestrian",
+  //                                  {{"/locations/0/search_filter/level", "0"},
+  //                                   {"/locations/1/search_filter/level", "3"}});
+  //   gurka::assert::raw::
+  //       expect_maneuvers(result,
+  //                        {
+  //                            DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kStart,
+  //                            DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kRight,
+  //                            DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kLeft,
+  //                            DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kParkVehicle,
+  //                            DirectionsLeg_Maneuver_Type::DirectionsLeg_Maneuver_Type_kLeft,
+  //                            DirectionsLeg_Maneuver_Type::
+  //                                DirectionsLeg_Maneuver_Type_kDestinationRight,
+  //                        });
+  //   auto& leg = result.directions().routes(0).legs(0);
+  //
+  //   // travel mode changes along the route
+  //   EXPECT_EQ(leg.maneuver(0).travel_mode(), TravelMode::kDrive);
+  //   EXPECT_EQ(leg.maneuver(leg.maneuver_size() - 1).travel_mode(), TravelMode::kPedestrian);
+  //   gurka::assert::raw::expect_path(result, {"AB", "BE", "EF", "EF", "FC"});
+  // }
 }

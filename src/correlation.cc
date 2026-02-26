@@ -1,5 +1,6 @@
 #include "parking_spaces/correlation.h"
 #include "parking_spaces/node.h"
+#include "parking_spaces/parking_spaces.h"
 
 #include <valhalla/baldr/graphconstants.h>
 #include <valhalla/baldr/graphid.h>
@@ -228,6 +229,7 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
   for (const auto& bss : osm_bss) {
 
     auto bss_ll = bss.node.latlng();
+    auto level = bss.level;
 
     std::array<BestProjection, kAccessMasks.size()> best_projections;
     std::array<float, kAccessMasks.size()> min_distances;
@@ -252,6 +254,26 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
 
         if ((!(directededge->forwardaccess() & kParkingAccessMask)) || directededge->is_shortcut()) {
           continue;
+        }
+
+        auto ei = local_tile.edgeinfo(directededge);
+
+        auto levels = ei.levels().first;
+        if (level != parking_spaces::kInvalidLevel) {
+          if (levels.size() == 1) {
+            auto first_level = levels.at(0);
+            if (first_level.first == first_level.second && first_level.first == level) {
+              //
+            } else { // only one level but it's either a range or it does not match
+              continue;
+            }
+          } else { // valid level but the edge either has multiple or no levels
+            continue;
+          }
+        } else {
+          if (levels.size() != 0) {
+            continue; // no level on the parking node, but the edge has a level, so skip
+          }
         }
 
         std::vector<PointLL> this_shape = edgeinfo.shape();
@@ -338,11 +360,11 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
   return std::make_pair(res, added_connections_per_bss);
 }
 
-void add_bss_nodes_and_edges(GraphTileBuilder& tilebuilder_local,
-                             const GraphTile& tile,
-                             std::mutex& lock,
-                             std::vector<parking_connection>& new_connections,
-                             std::vector<size_t>& new_connection_counts) {
+void add_nodes_and_edges(GraphTileBuilder& tilebuilder_local,
+                         const GraphTile& tile,
+                         std::mutex& lock,
+                         std::vector<parking_connection>& new_connections,
+                         std::vector<size_t>& new_connection_counts) {
   auto local_level = TileHierarchy::levels().back().level;
   auto scoped_finally = make_finally([&tilebuilder_local, &tile, &lock]() {
     LOG_INFO("Storing local tile data with bss nodes, tile id: " +
@@ -418,11 +440,11 @@ void add_bss_nodes_and_edges(GraphTileBuilder& tilebuilder_local,
   }
 }
 
-void project_and_add_bss_nodes(const boost::property_tree::ptree& pt,
-                               std::mutex& lock,
-                               bss_by_tile_t::const_iterator tile_start,
-                               bss_by_tile_t::const_iterator tile_end,
-                               std::vector<parking_connection>& all) {
+void project_and_add_parking_nodes(const boost::property_tree::ptree& pt,
+                                   std::mutex& lock,
+                                   bss_by_tile_t::const_iterator tile_start,
+                                   bss_by_tile_t::const_iterator tile_end,
+                                   std::vector<parking_connection>& all) {
 
   GraphReader reader_local_level(pt);
   for (; tile_start != tile_end; ++tile_start) {
@@ -439,8 +461,8 @@ void project_and_add_bss_nodes(const boost::property_tree::ptree& pt,
     }
 
     auto new_connections = project(*local_tile, tile_start->second);
-    add_bss_nodes_and_edges(*tilebuilder_local, *local_tile, lock, new_connections.first,
-                            new_connections.second);
+    add_nodes_and_edges(*tilebuilder_local, *local_tile, lock, new_connections.first,
+                        new_connections.second);
     {
       std::lock_guard<std::mutex> l{lock};
       std::move(new_connections.first.begin(), new_connections.first.end(), std::back_inserter(all));
@@ -707,9 +729,9 @@ void correlate_parking_spaces(const boost::property_tree::ptree& pt,
       // Where the range ends
       std::advance(tile_end, tile_count);
       // Make the thread
-      threads[i] =
-          std::make_shared<std::thread>(project_and_add_bss_nodes, std::cref(pt.get_child("mjolnir")),
-                                        std::ref(lock), tile_start, tile_end, std::ref(all));
+      threads[i] = std::make_shared<std::thread>(project_and_add_parking_nodes,
+                                                 std::cref(pt.get_child("mjolnir")), std::ref(lock),
+                                                 tile_start, tile_end, std::ref(all));
     }
 
     for (auto& thread : threads) {
