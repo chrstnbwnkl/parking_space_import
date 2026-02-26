@@ -244,10 +244,11 @@ project(const GraphTile& local_tile, const std::vector<parking_spaces::parking_s
         const DirectedEdge* directededge = local_tile.directededge(node->edge_index() + j);
         auto edgeinfo = local_tile.edgeinfo(directededge);
 
-        auto found = VALID_EDGE_USES.count(directededge->use());
-        if (!found) {
-          continue;
-        }
+        // todo: this filter is in place in the bikesharing correlation; i don't see why we need it
+        // auto found = VALID_EDGE_USES.count(directededge->use());
+        // if (!found) {
+        //   continue;
+        // }
 
         if ((!(directededge->forwardaccess() & kParkingAccessMask)) || directededge->is_shortcut()) {
           continue;

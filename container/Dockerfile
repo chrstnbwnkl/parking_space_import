@@ -1,13 +1,14 @@
 ARG VALHALLA_BUILDER_IMAGE=ghcr.io/valhalla/valhalla:latest
-# some build args
-ARG ENABLE_TESTS=Off
-ARG BUILD_TOOLS=On
 
 FROM $VALHALLA_BUILDER_IMAGE AS valhalla_base
 LABEL org.opencontainers.image.authors="Christian Beiwinkel <chrstn@bwnkl.de>"
 
 FROM ubuntu:24.04 AS builder
 LABEL org.opencontainers.image.authors="Christian Beiwinkel <chrstn@bwnkl.de>"
+
+# some build args
+ARG ENABLE_TESTS=Off
+ARG BUILD_TOOLS=On
 
 COPY --from=valhalla_base /usr/local /usr/local
 COPY --from=valhalla_base /usr/local/lib/python3.12/dist-packages/valhalla /usr/local/lib/python3.12/dist-packages/

@@ -33,7 +33,7 @@ std::pair<float, float> parse_level(std::string_view s) {
 
   std::smatch match;
   std::string num(s.data());
-  float precision;
+  float precision = 0.f;
   if (std::regex_search(num, match, kFloatRegex)) {
     precision = static_cast<int>(match[1].str().size());
   }
@@ -136,6 +136,6 @@ void process_parking_spaces(const boost::property_tree::ptree& config, std::stri
     return;
   }
 
-  parking_spaces::correlate_parking_spaces(config, std::string(tmp_dir) + kTempSequencePath.data());
+  correlate_parking_spaces(config, std::string(tmp_dir) + kTempSequencePath.data());
 }
 } // namespace parking_spaces
