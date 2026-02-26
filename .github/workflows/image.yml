@@ -81,7 +81,7 @@ jobs:
           provenance: false # needed to be able to converge into one image
           platforms: ${{ steps.vars.outputs.platform }}
           push: true
-          tags: ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }}
+          tags: ghcr.io/chrstnbwnkl/parking_space_import:${{ needs.extract_image_tag.outputs.tag }}-${{ steps.vars.outputs.tagsuffix }}
           cache-from: type=gha,scope=${{ steps.vars.outputs.platform }}
           cache-to: type=gha,mode=max,scope=${{ steps.vars.outputs.platform }}
 
